@@ -1,23 +1,36 @@
 #include <pebble.h>
 
 #define SAVE_KEY_LEVEL 1 
-#define MAX_PLATFORMS 10 
+#define MAX_ENTITIES 30 
+#define ENTITIES_PER_LANE 2
 
 // --- BITMAP DATA ---
 
 static const uint8_t frog_bitmap_data[] = {
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b01111110, 0b00000000, 0b00000000, 
-  0b00000001, 0b11111110, 0b00000000, 0b00000000, 0b00000011, 0b10011111, 0b10000000, 0b00000000, 
-  0b00000011, 0b10011111, 0b11100000, 0b00000000, 0b00001111, 0b11111111, 0b11110000, 0b00000000, 
-  0b00001111, 0b11111111, 0b11110000, 0b00000000, 0b00001111, 0b11111111, 0b11110000, 0b00000000, 
-  0b00011111, 0b11111111, 0b11110000, 0b00000000, 0b00011111, 0b11111111, 0b11110000, 0b00000000, 
-  0b00011111, 0b11111111, 0b11110000, 0b00000000, 0b00001111, 0b00011110, 0b00110000, 0b00000000, 
-  0b00001100, 0b00011110, 0b00011000, 0b00000000, 0b00011000, 0b00011100, 0b00001100, 0b00000000, 
-  0b00111100, 0b00011110, 0b00001111, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000  
+  0b00000000, 0b00000000, 0b00000000, 0b00000000, 
+  0b00000000, 0b00000000, 0b00000000, 0b00000000, 
+  0b00000000, 0b00011100, 0b00000000, 0b00000000, // Eye bump
+  0b00000000, 0b00111110, 0b00000000, 0b00000000, // Eye
+  0b00000000, 0b01110111, 0b00000000, 0b00000000, // Pupil hole
+  0b00000000, 0b01111111, 0b10000000, 0b00000000, // Head top
+  0b00000000, 0b11111111, 0b11000000, 0b00000000, // Snout
+  0b00000000, 0b11111111, 0b11000000, 0b00000000, 
+  0b00000000, 0b11111111, 0b10000000, 0b00000000, 
+  0b00000001, 0b11111111, 0b00000000, 0b00000000, // Back slope
+  0b00000011, 0b11111111, 0b00000000, 0b00000000, 
+  0b00000111, 0b11111110, 0b00000000, 0b00000000, 
+  0b00000111, 0b10111110, 0b00000000, 0b00000000, // Front arm separation
+  0b00001111, 0b00011110, 0b00000000, 0b00000000, 
+  0b00001111, 0b00011111, 0b00000000, 0b00000000, 
+  0b00011110, 0b00011011, 0b10000000, 0b00000000, // Folded back leg
+  0b00011110, 0b00011001, 0b10000000, 0b00000000, 
+  0b00111110, 0b00011001, 0b11000000, 0b00000000, 
+  0b00111111, 0b11111111, 0b11000000, 0b00000000, // Feet
+  0b00000000, 0b00000000, 0b00000000, 0b00000000, 
+  0b00000000, 0b00000000, 0b00000000, 0b00000000, 
+  0b00000000, 0b00000000, 0b00000000, 0b00000000, 
+  0b00000000, 0b00000000, 0b00000000, 0b00000000, 
+  0b00000000, 0b00000000, 0b00000000, 0b00000000  
 };
 
 static const uint8_t splat_bitmap_data[] = {
@@ -89,7 +102,7 @@ typedef struct {
   int y_scaled;      
   int speed_scaled;  
   bool is_lilypad; 
-  bool is_car;       // NEW: Distinguishes deadly cars from platforms
+  bool is_car;       
 } Entity;
 
 // --- GLOBAL VARIABLES ---
@@ -109,9 +122,10 @@ static AppTimer *s_game_timer;
 static int s_screen_w = 144;
 static int s_screen_h = 168;
 static int s_num_active_lanes = 4;
-static bool s_is_highway = false; // Tracks current level type
+static int s_total_entities = 0;
+static bool s_is_highway = false; 
 
-static Entity s_platforms[MAX_PLATFORMS];
+static Entity s_platforms[MAX_ENTITIES];
 
 static int s_frog_x = 0;
 static int s_frog_y_scaled = 72 * 10; 
@@ -123,35 +137,42 @@ static bool s_is_dead = false;
 
 static void init_platforms() {
   int max_lanes = (s_screen_w / 24) - 2;
-  s_num_active_lanes = max_lanes > MAX_PLATFORMS ? MAX_PLATFORMS : max_lanes;
+  s_num_active_lanes = max_lanes > 8 ? 8 : max_lanes; 
   
-  // Odd levels = Water. Even levels = Highway.
   s_is_highway = (s_level % 2 == 0); 
+  s_total_entities = 0;
 
   for(int i = 0; i < s_num_active_lanes; i++) {
-    s_platforms[i].x = 24 + (i * 24); 
-    s_platforms[i].y_scaled = (rand() % s_screen_h) * 10; 
+    int lane_speed;
+    bool lane_is_car = s_is_highway;
+    bool lane_is_lilypad = false;
     
     if (s_is_highway) {
-      s_platforms[i].is_car = true;
-      s_platforms[i].is_lilypad = false;
-      
-      // Highway: Cars move fast. Increase speed with level.
-      s_platforms[i].speed_scaled = 15 + (s_level * 2) + (rand() % 10); 
-      
-      // ALTERNATING TRAFFIC: Every other lane goes the opposite direction!
-      if (i % 2 == 0) {
-        s_platforms[i].speed_scaled *= -1; 
-      }
-      
+      lane_speed = 12 + (s_level * 2) + (rand() % 8); 
+      if (i % 2 == 0) lane_speed *= -1; 
     } else {
-      s_platforms[i].is_car = false;
-      s_platforms[i].is_lilypad = (i % 2 != 0); 
-      s_platforms[i].speed_scaled = 5 + (s_level) + (rand() % 8); 
+      lane_is_lilypad = (i % 2 != 0); 
+      lane_speed = 5 + (s_level) + (rand() % 5); 
+    }
+
+    // THE FIX: Stagger odd/even lanes so walls don't form
+    int lane_stagger = (i % 2 == 0) ? 0 : 80;
+
+    for(int j = 0; j < ENTITIES_PER_LANE; j++) {
+      int idx = s_total_entities;
+      s_platforms[idx].x = 24 + (i * 24); 
+      
+      // Space them out by 120 pixels vertically, add the stagger, and a tiny bit of random variance
+      s_platforms[idx].y_scaled = ((j * 120) + lane_stagger + (rand() % 15)) * 10; 
+      
+      s_platforms[idx].speed_scaled = lane_speed; 
+      s_platforms[idx].is_car = lane_is_car;
+      s_platforms[idx].is_lilypad = lane_is_lilypad;
+      
+      s_total_entities++;
     }
   }
 }
-
 // --- DRAWING LOOP ---
 
 static void canvas_update_proc(Layer *layer, GContext *ctx) {
@@ -161,15 +182,11 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
 
   #ifdef PBL_COLOR
     if (s_is_highway) {
-      // Highway Colors
-      graphics_context_set_fill_color(ctx, GColorDarkGray); // Asphalt
+      graphics_context_set_fill_color(ctx, GColorDarkGray); 
       graphics_fill_rect(ctx, GRect(24, 0, s_screen_w - 48, s_screen_h), 0, GCornerNone);
-      
-      graphics_context_set_fill_color(ctx, GColorMalachite); // Green Grass Shores
+      graphics_context_set_fill_color(ctx, GColorMalachite); 
       graphics_fill_rect(ctx, GRect(0, 0, 24, s_screen_h), 0, GCornerNone); 
       graphics_fill_rect(ctx, GRect(s_screen_w - 24, 0, 24, s_screen_h), 0, GCornerNone); 
-      
-      // Draw dashed lane lines
       graphics_context_set_stroke_color(ctx, GColorWhite);
       for (int i = 1; i < s_num_active_lanes; i++) {
         for (int y = 0; y < s_screen_h; y += 15) {
@@ -177,16 +194,13 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
         }
       }
     } else {
-      // Water Colors
       graphics_context_set_fill_color(ctx, GColorPictonBlue);
       graphics_fill_rect(ctx, GRect(24, 0, s_screen_w - 48, s_screen_h), 0, GCornerNone);
-      
       graphics_context_set_fill_color(ctx, GColorPastelYellow);
       graphics_fill_rect(ctx, GRect(0, 0, 24, s_screen_h), 0, GCornerNone); 
       graphics_fill_rect(ctx, GRect(s_screen_w - 24, 0, 24, s_screen_h), 0, GCornerNone); 
     }
   #else
-    // B&W Fallback Boundaries
     graphics_context_set_stroke_color(ctx, GColorWhite);
     graphics_draw_line(ctx, GPoint(24, 0), GPoint(24, s_screen_h));
     graphics_draw_line(ctx, GPoint(s_screen_w - 24, 0), GPoint(s_screen_w - 24, s_screen_h));
@@ -194,14 +208,14 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
 
   graphics_context_set_compositing_mode(ctx, GCompOpSet);
 
-  // 2. Draw Entities (Cars, Logs, Lilypads)
-  for (int i = 0; i < s_num_active_lanes; i++) {
+  // 2. Draw Entities
+  // UPDATE: Now loops through s_total_entities instead of s_num_active_lanes
+  for (int i = 0; i < s_total_entities; i++) {
     int actual_y = s_platforms[i].y_scaled / 10;
     GRect bounds = GRect(s_platforms[i].x, actual_y, 24, 24);
     
     #ifdef PBL_COLOR
       if (s_platforms[i].is_car) {
-        // Red cars!
         graphics_context_set_fill_color(ctx, GColorRed);
       } else if (s_platforms[i].is_lilypad) {
         graphics_context_set_fill_color(ctx, GColorKellyGreen);
@@ -217,7 +231,6 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
     } else {
       bmp = s_platforms[i].is_lilypad ? s_lilypad_bitmap : s_log_bitmap;
     }
-    
     graphics_draw_bitmap_in_rect(ctx, bmp, bounds);
   }
 
@@ -225,11 +238,8 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
   int frog_actual_y = s_frog_y_scaled / 10;
   GRect highlight_bounds = GRect(s_frog_x + 2, frog_actual_y + 2, 20, 20);
   
-  #ifdef PBL_COLOR
-    graphics_context_set_fill_color(ctx, GColorBrightGreen); 
-  #else
-    graphics_context_set_fill_color(ctx, GColorWhite);
-  #endif
+  // Ditch the green/white logic. Black background behind a white sprite ALWAYS pops.
+  graphics_context_set_fill_color(ctx, GColorBlack);
   graphics_fill_rect(ctx, highlight_bounds, 4, GCornersAll); 
 
   GRect frog_bounds = GRect(s_frog_x, frog_actual_y, 24, 24);
@@ -275,55 +285,50 @@ static void check_collisions() {
 
   int frog_actual_y = s_frog_y_scaled / 10;
 
-  // Safe if on the shores
-  if (s_frog_x == 0 || s_frog_x >= s_screen_w - 24) {
-    return; 
-  }
+  if (s_frog_x == 0 || s_frog_x >= s_screen_w - 24) return; 
 
-  // LOGIC SPLIT: Highway vs Water
   if (s_is_highway) {
-    // HIGHWAY LOGIC: Die if touching an entity
-    for (int i = 0; i < s_num_active_lanes; i++) {
+    // UPDATE: Loop through all spawned entities
+    for (int i = 0; i < s_total_entities; i++) {
       if (s_frog_x == s_platforms[i].x) {
         int plat_actual_y = s_platforms[i].y_scaled / 10;
         
-        // Simple bounding box overlap check
         if (frog_actual_y + 16 > plat_actual_y && frog_actual_y < plat_actual_y + 24) {
-          kill_frog(); // Hit by a car!
+          kill_frog(); 
           return;
         }
       }
     }
   } else {
-    // WATER LOGIC: Die if NOT touching an entity
     bool safe_on_platform = false;
-    for (int i = 0; i < s_num_active_lanes; i++) {
+    // UPDATE: Loop through all spawned entities
+    for (int i = 0; i < s_total_entities; i++) {
       if (s_frog_x == s_platforms[i].x) {
         int plat_actual_y = s_platforms[i].y_scaled / 10;
         
         if (frog_actual_y + 16 > plat_actual_y && frog_actual_y < plat_actual_y + 24) {
           safe_on_platform = true;
-          s_frog_y_scaled += s_platforms[i].speed_scaled; // Drift
+          s_frog_y_scaled += s_platforms[i].speed_scaled; 
           break;
         }
       }
     }
 
     if (!safe_on_platform) {
-      kill_frog(); // Drowned
+      kill_frog(); 
     } else if (frog_actual_y > s_screen_h || frog_actual_y < -24) {
-      kill_frog(); // Floated off screen
+      kill_frog(); 
     }
   }
 }
 
 static void game_loop(void *data) {
-  for (int i = 0; i < s_num_active_lanes; i++) {
+  // UPDATE: Loop through all spawned entities
+  for (int i = 0; i < s_total_entities; i++) {
     s_platforms[i].y_scaled += s_platforms[i].speed_scaled;
     
     int actual_y = s_platforms[i].y_scaled / 10;
     
-    // Wrap around screen based on direction of movement
     if (s_platforms[i].speed_scaled > 0 && actual_y > s_screen_h) {
       s_platforms[i].y_scaled = -24 * 10; 
     } else if (s_platforms[i].speed_scaled < 0 && actual_y < -24) {
@@ -332,7 +337,6 @@ static void game_loop(void *data) {
   }
 
   check_collisions();
-
   layer_mark_dirty(s_canvas_layer);
   s_game_timer = app_timer_register(33, game_loop, NULL); 
 }
