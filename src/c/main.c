@@ -135,7 +135,7 @@ static AppTimer *s_game_timer;
 
 static int s_screen_w = 144;
 static int s_screen_h = 168;
-static int s_right_shore_x = 128; // NEW: Dynamically calculated shore start point
+static int s_right_shore_x = 128; 
 static int s_num_active_lanes = 0;
 static int s_total_entities = 0;
 static bool s_is_highway = false; 
@@ -205,8 +205,6 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
       
       graphics_context_set_fill_color(ctx, GColorMalachite); 
       graphics_fill_rect(ctx, GRect(0, 0, 16, s_screen_h), 0, GCornerNone); 
-      
-      // Paint from the calculated dynamic shore edge to the true screen edge
       graphics_fill_rect(ctx, GRect(s_right_shore_x, 0, s_screen_w - s_right_shore_x, s_screen_h), 0, GCornerNone); 
       
       graphics_context_set_stroke_color(ctx, GColorWhite);
@@ -260,7 +258,7 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
     graphics_draw_bitmap_in_rect(ctx, bmp, bounds);
   }
 
-  // 3. Draw the Frog (With Black Contrast Box)
+  // 3. Draw the Frog
   int frog_actual_y = s_frog_y_scaled / 10;
   
   GRect highlight_bounds = GRect(s_frog_x, frog_actual_y, 16, 16);
@@ -277,13 +275,18 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
     snprintf(ui_buffer, sizeof(ui_buffer), "GAME OVER");
   }
   
+  // PBL_IF_ROUND_ELSE pushes UI down exactly 12px for Chalk/Gabbro displays!
+  int ui_y = PBL_IF_ROUND_ELSE(12, 0);
+  
   graphics_context_set_text_color(ctx, GColorWhite);
   graphics_context_set_fill_color(ctx, GColorBlack);
-  graphics_fill_rect(ctx, GRect(0, 0, s_screen_w, 16), 0, GCornerNone);
-  graphics_draw_text(ctx, ui_buffer, fonts_get_system_font(FONT_KEY_GOTHIC_14), GRect(0, -2, s_screen_w, 20), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+  graphics_fill_rect(ctx, GRect(0, ui_y, s_screen_w, 16), 0, GCornerNone);
+  graphics_draw_text(ctx, ui_buffer, fonts_get_system_font(FONT_KEY_GOTHIC_14), GRect(0, ui_y - 2, s_screen_w, 20), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
 }
 
 // --- GAME LOGIC ---
+
+static void game_loop(void *data); // Forward declaration for callbacks
 
 static void reset_splat_callback(void *data) {
   if (s_lives > 0) {
@@ -292,6 +295,9 @@ static void reset_splat_callback(void *data) {
     s_frog_x = 0; 
     s_frog_y_scaled = (s_screen_h / 2) * 10; 
     layer_mark_dirty(s_canvas_layer);
+    
+    // BATTERY FIX: Kickstart the engine again
+    s_game_timer = app_timer_register(50, game_loop, NULL);
   }
 }
 
@@ -309,7 +315,6 @@ static void check_collisions() {
 
   int frog_actual_y = s_frog_y_scaled / 10;
 
-  // Uses the dynamic shore edge to grant safety
   if (s_frog_x == 0 || s_frog_x >= s_right_shore_x) return; 
 
   if (s_is_highway) {
@@ -367,7 +372,11 @@ static void game_loop(void *data) {
 
   check_collisions();
   layer_mark_dirty(s_canvas_layer);
-  s_game_timer = app_timer_register(50, game_loop, NULL); 
+  
+  // BATTERY FIX: Only schedule the next frame if the frog is alive
+  if (!s_is_dead) {
+    s_game_timer = app_timer_register(50, game_loop, NULL); 
+  }
 }
 
 // --- BUTTON INPUTS ---
@@ -399,6 +408,9 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
     s_frog_y_scaled = (s_screen_h / 2) * 10;
     init_platforms();
     layer_mark_dirty(s_canvas_layer);
+    
+    // BATTERY FIX: Kickstart engine for new game
+    s_game_timer = app_timer_register(50, game_loop, NULL);
     return;
   }
 
@@ -407,7 +419,6 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   if (s_frog_x < s_right_shore_x) { 
     s_frog_x += 16;
     
-    // Checks for a win against the dynamic shore edge
     if (s_frog_x >= s_right_shore_x) {
       vibes_double_pulse(); 
       s_level++;
@@ -438,7 +449,6 @@ static void main_window_load(Window *window) {
   s_screen_w = bounds.size.w;
   s_screen_h = bounds.size.h;
 
-  // Mathematically derive the final right shore boundary based on 16px columns
   int total_cols = s_screen_w / 16;
   s_right_shore_x = (total_cols - 1) * 16;
 
@@ -492,6 +502,8 @@ static void init() {
   });
 
   window_set_click_config_provider(s_main_window, click_config_provider);
+  
+  // Kickstart the very first game loop
   s_game_timer = app_timer_register(50, game_loop, NULL);
   window_stack_push(s_main_window, true);
 }
