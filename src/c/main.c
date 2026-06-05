@@ -2,98 +2,119 @@
 
 #define SAVE_KEY_LEVEL 1 
 #define MAX_ENTITIES 30 
-#define ENTITIES_PER_LANE 2
+#define ENTITIES_PER_LANE 2 
 
-// --- BITMAP DATA ---
+// --- 16-PIXEL BITMAP DATA ---
 
+// NEW: Top-Down Symmetrical Frog
 static const uint8_t frog_bitmap_data[] = {
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 
-  0b00000000, 0b00011100, 0b00000000, 0b00000000, // Eye bump
-  0b00000000, 0b00111110, 0b00000000, 0b00000000, // Eye
-  0b00000000, 0b01110111, 0b00000000, 0b00000000, // Pupil hole
-  0b00000000, 0b01111111, 0b10000000, 0b00000000, // Head top
-  0b00000000, 0b11111111, 0b11000000, 0b00000000, // Snout
-  0b00000000, 0b11111111, 0b11000000, 0b00000000, 
-  0b00000000, 0b11111111, 0b10000000, 0b00000000, 
-  0b00000001, 0b11111111, 0b00000000, 0b00000000, // Back slope
-  0b00000011, 0b11111111, 0b00000000, 0b00000000, 
-  0b00000111, 0b11111110, 0b00000000, 0b00000000, 
-  0b00000111, 0b10111110, 0b00000000, 0b00000000, // Front arm separation
-  0b00001111, 0b00011110, 0b00000000, 0b00000000, 
-  0b00001111, 0b00011111, 0b00000000, 0b00000000, 
-  0b00011110, 0b00011011, 0b10000000, 0b00000000, // Folded back leg
-  0b00011110, 0b00011001, 0b10000000, 0b00000000, 
-  0b00111110, 0b00011001, 0b11000000, 0b00000000, 
-  0b00111111, 0b11111111, 0b11000000, 0b00000000, // Feet
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 
-  0b00000000, 0b00000000, 0b00000000, 0b00000000  
+  0b00000000, 0b00000000, 0, 0,
+  0b00011000, 0b00011000, 0, 0, 
+  0b00111100, 0b00111100, 0, 0, 
+  0b00011111, 0b11111000, 0, 0, 
+  0b00001111, 0b11110000, 0, 0, 
+  0b00001111, 0b11110000, 0, 0,
+  0b01101111, 0b11110110, 0, 0, 
+  0b01101111, 0b11110110, 0, 0,
+  0b00001111, 0b11110000, 0, 0, 
+  0b00001111, 0b11110000, 0, 0,
+  0b00001111, 0b11110000, 0, 0,
+  0b00001111, 0b11110000, 0, 0,
+  0b00111111, 0b11111100, 0, 0, 
+  0b01111000, 0b00011110, 0, 0, 
+  0b01100000, 0b00000110, 0, 0, 
+  0b00000000, 0b00000000, 0, 0
 };
 
 static const uint8_t splat_bitmap_data[] = {
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00010001, 0b00000000, 0b00000000, 
-  0b00000010, 0b00001010, 0b00001000, 0b00000000, 0b00000100, 0b00000100, 0b00010000, 0b00000000, 
-  0b00000010, 0b01111110, 0b01000000, 0b00000000, 0b00000001, 0b11111111, 0b10000000, 0b00000000, 
-  0b00000000, 0b11111111, 0b00000000, 0b00000000, 0b00001111, 0b11111111, 0b11110000, 0b00000000, 
-  0b00001111, 0b11111111, 0b11110000, 0b00000000, 0b00011111, 0b11111111, 0b11111000, 0b00000000, 
-  0b00111111, 0b11111111, 0b11111100, 0b00000000, 0b00011111, 0b11111111, 0b11111000, 0b00000000, 
-  0b00001111, 0b11111111, 0b11110000, 0b00000000, 0b00001111, 0b11111111, 0b11110000, 0b00000000, 
-  0b00000000, 0b11111111, 0b00000000, 0b00000000, 0b00000001, 0b11111111, 0b10000000, 0b00000000, 
-  0b00000010, 0b01111110, 0b01000000, 0b00000000, 0b00000100, 0b00000100, 0b00010000, 0b00000000, 
-  0b00000010, 0b00001010, 0b00001000, 0b00000000, 0b00000000, 0b00010001, 0b00000000, 0b00000000, 
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000  
-};
-
-static const uint8_t log_bitmap_data[] = {
-  0b00000011, 0b11111111, 0b11000000, 0b00000000, 0b00001111, 0b11111111, 0b11110000, 0b00000000, 
-  0b00011111, 0b11111111, 0b11111000, 0b00000000, 0b00011001, 0b10111101, 0b10011000, 0b00000000, 
-  0b00011111, 0b11111111, 0b11111000, 0b00000000, 0b00011011, 0b11011011, 0b11011000, 0b00000000, 
-  0b00011111, 0b11111111, 0b11111000, 0b00000000, 0b00011001, 0b10111101, 0b10011000, 0b00000000, 
-  0b00011111, 0b11111111, 0b11111000, 0b00000000, 0b00011011, 0b11011011, 0b11011000, 0b00000000, 
-  0b00011111, 0b11111111, 0b11111000, 0b00000000, 0b00011001, 0b10111101, 0b10011000, 0b00000000, 
-  0b00011111, 0b11111111, 0b11111000, 0b00000000, 0b00011011, 0b11011011, 0b11011000, 0b00000000, 
-  0b00011111, 0b11111111, 0b11111000, 0b00000000, 0b00011001, 0b10111101, 0b10011000, 0b00000000, 
-  0b00011111, 0b11111111, 0b11111000, 0b00000000, 0b00011011, 0b11011011, 0b11011000, 0b00000000, 
-  0b00011111, 0b11111111, 0b11111000, 0b00000000, 0b00011001, 0b10111101, 0b10011000, 0b00000000, 
-  0b00011111, 0b11111111, 0b11111000, 0b00000000, 0b00001111, 0b11111111, 0b11110000, 0b00000000, 
-  0b00000011, 0b11111111, 0b11000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000  
+  0b00000000, 0b00000000, 0, 0,
+  0b00010000, 0b00001000, 0, 0,
+  0b00001010, 0b01000000, 0, 0,
+  0b00000111, 0b10000000, 0, 0,
+  0b01001111, 0b11010000, 0, 0,
+  0b00111111, 0b11100000, 0, 0,
+  0b00011111, 0b11110010, 0, 0,
+  0b10111111, 0b11111000, 0, 0,
+  0b00011111, 0b11111001, 0, 0,
+  0b01001111, 0b11110000, 0, 0,
+  0b00000111, 0b11100100, 0, 0,
+  0b00000011, 0b11000000, 0, 0,
+  0b00101010, 0b00100000, 0, 0,
+  0b00010000, 0b00010000, 0, 0,
+  0b00000000, 0b00000000, 0, 0,
+  0b00000000, 0b00000000, 0, 0
 };
 
 static const uint8_t lilypad_bitmap_data[] = {
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000011, 0b11111100, 0b00000000, 0b00000000,
-  0b00001111, 0b11111110, 0b00000000, 0b00000000, 0b00011111, 0b11111111, 0b00000000, 0b00000000,
-  0b00111111, 0b11111111, 0b10000000, 0b00000000, 0b00111111, 0b11111111, 0b11000000, 0b00000000,
-  0b01111111, 0b11111111, 0b11000000, 0b00000000, 0b01111111, 0b11111111, 0b11100000, 0b00000000,
-  0b01111111, 0b11111111, 0b11100000, 0b00000000, 0b11111111, 0b11111111, 0b11100000, 0b00000000,
-  0b11111111, 0b11111001, 0b11100000, 0b00000000, 0b11111111, 0b11100000, 0b11100000, 0b00000000,
-  0b11111111, 0b11111001, 0b11100000, 0b00000000, 0b11111111, 0b11111111, 0b11100000, 0b00000000,
-  0b01111111, 0b11111111, 0b11100000, 0b00000000, 0b01111111, 0b11111111, 0b11100000, 0b00000000,
-  0b01111111, 0b11111111, 0b11000000, 0b00000000, 0b00111111, 0b11111111, 0b11000000, 0b00000000,
-  0b00111111, 0b11111111, 0b10000000, 0b00000000, 0b00011111, 0b11111111, 0b00000000, 0b00000000,
-  0b00001111, 0b11111110, 0b00000000, 0b00000000, 0b00000011, 0b11111100, 0b00000000, 0b00000000,
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000
+  0b00000111, 0b11100000, 0, 0,
+  0b00011111, 0b11111000, 0, 0,
+  0b00111111, 0b11111100, 0, 0,
+  0b01111111, 0b11111110, 0, 0,
+  0b01111111, 0b11111110, 0, 0,
+  0b11111111, 0b11111111, 0, 0,
+  0b11111000, 0b01111111, 0, 0,
+  0b11110000, 0b00111111, 0, 0,
+  0b11110000, 0b00111111, 0, 0,
+  0b11111000, 0b01111111, 0, 0,
+  0b11111111, 0b11111111, 0, 0,
+  0b01111111, 0b11111110, 0, 0,
+  0b01111111, 0b11111110, 0, 0,
+  0b00111111, 0b11111100, 0, 0,
+  0b00011111, 0b11111000, 0, 0,
+  0b00000111, 0b11100000, 0, 0
 };
 
-// ADDED: The original Car Bitmap
+// 16x32 Car (Spans 2 grids vertically)
 static const uint8_t car_bitmap_data[] = {
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 
-  0b00000000, 0b11000011, 0b00000000, 0b00000000, 0b00000001, 0b11111111, 0b10000000, 0b00000000, 
-  0b00000011, 0b11111111, 0b11000000, 0b00000000, 0b00011011, 0b11111111, 0b11011000, 0b00000000, 
-  0b00011011, 0b00000000, 0b11011000, 0b00000000, 0b00011011, 0b11111111, 0b11011000, 0b00000000, 
-  0b00000011, 0b11111111, 0b11000000, 0b00000000, 0b00000011, 0b11111111, 0b11000000, 0b00000000, 
-  0b00000011, 0b11111111, 0b11000000, 0b00000000, 0b00000011, 0b11111111, 0b11000000, 0b00000000, 
-  0b00000011, 0b11111111, 0b11000000, 0b00000000, 0b00000011, 0b11111111, 0b11000000, 0b00000000, 
-  0b00011011, 0b00000000, 0b11011000, 0b00000000, 0b00011011, 0b11111111, 0b11011000, 0b00000000, 
-  0b00011011, 0b11111111, 0b11011000, 0b00000000, 0b00000011, 0b11111111, 0b11000000, 0b00000000, 
-  0b00000001, 0b11111111, 0b10000000, 0b00000000, 0b00000000, 0b11000011, 0b00000000, 0b00000000, 
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 
-  0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000  
+  0b00000000, 0b00000000, 0, 0,
+  0b00111111, 0b11111100, 0, 0,
+  0b01111111, 0b11111110, 0, 0,
+  0b01111111, 0b11111110, 0, 0,
+  0b01100000, 0b00000110, 0, 0,
+  0b01100000, 0b00000110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111111, 0b11111110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111111, 0b11111110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111111, 0b11111110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111111, 0b11111110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111111, 0b11111110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111111, 0b11111110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111111, 0b11111110, 0, 0,
+  0b01100000, 0b00000110, 0, 0,
+  0b01100000, 0b00000110, 0, 0,
+  0b01111111, 0b11111110, 0, 0,
+  0b01111111, 0b11111110, 0, 0,
+  0b01111111, 0b11111110, 0, 0,
+  0b01111111, 0b11111110, 0, 0,
+  0b00111111, 0b11111100, 0, 0,
+  0b00000000, 0b00000000, 0, 0
 };
 
+// 16x48 Log (Spans 3 grids vertically - massive target!)
+static const uint8_t log_bitmap_data[] = {
+  0b00111111, 0b11111100, 0, 0, 0b01111111, 0b11111110, 0, 0,
+  0b01111011, 0b11011110, 0, 0, 0b01101111, 0b11110110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111101, 0b10111110, 0, 0,
+  0b01111011, 0b11011110, 0, 0, 0b01101111, 0b11110110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111101, 0b10111110, 0, 0,
+  0b01111011, 0b11011110, 0, 0, 0b01101111, 0b11110110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111101, 0b10111110, 0, 0,
+  0b01111011, 0b11011110, 0, 0, 0b01101111, 0b11110110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111101, 0b10111110, 0, 0,
+  0b01111011, 0b11011110, 0, 0, 0b01101111, 0b11110110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111101, 0b10111110, 0, 0,
+  0b01111011, 0b11011110, 0, 0, 0b01101111, 0b11110110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111101, 0b10111110, 0, 0,
+  0b01111011, 0b11011110, 0, 0, 0b01101111, 0b11110110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111101, 0b10111110, 0, 0,
+  0b01111011, 0b11011110, 0, 0, 0b01101111, 0b11110110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111101, 0b10111110, 0, 0,
+  0b01111011, 0b11011110, 0, 0, 0b01101111, 0b11110110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111101, 0b10111110, 0, 0,
+  0b01111011, 0b11011110, 0, 0, 0b01101111, 0b11110110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b01111101, 0b10111110, 0, 0,
+  0b01111011, 0b11011110, 0, 0, 0b01101111, 0b11110110, 0, 0,
+  0b01111111, 0b11111110, 0, 0, 0b00111111, 0b11111100, 0, 0
+};
 
 // --- DATA STRUCTURES ---
 
@@ -121,7 +142,7 @@ static AppTimer *s_game_timer;
 
 static int s_screen_w = 144;
 static int s_screen_h = 168;
-static int s_num_active_lanes = 4;
+static int s_num_active_lanes = 0;
 static int s_total_entities = 0;
 static bool s_is_highway = false; 
 
@@ -136,8 +157,8 @@ static bool s_is_dead = false;
 // --- INIT LEVEL ---
 
 static void init_platforms() {
-  int max_lanes = (s_screen_w / 24) - 2;
-  s_num_active_lanes = max_lanes > 8 ? 8 : max_lanes; 
+  int max_lanes = (s_screen_w / 16) - 2;
+  s_num_active_lanes = max_lanes > 12 ? 12 : max_lanes; 
   
   s_is_highway = (s_level % 2 == 0); 
   s_total_entities = 0;
@@ -148,22 +169,22 @@ static void init_platforms() {
     bool lane_is_lilypad = false;
     
     if (s_is_highway) {
-      lane_speed = 12 + (s_level * 2) + (rand() % 8); 
-      if (i % 2 == 0) lane_speed *= -1; 
+      lane_speed = 10 + (s_level * 2) + (rand() % 15); 
     } else {
       lane_is_lilypad = (i % 2 != 0); 
-      lane_speed = 5 + (s_level) + (rand() % 5); 
+      lane_speed = 6 + (s_level) + (rand() % 12); 
     }
 
-    // THE FIX: Stagger odd/even lanes so walls don't form
+    // THE FIX: Alternate direction for EVERY level
+    if (i % 2 == 0) lane_speed *= -1; 
+
     int lane_stagger = (i % 2 == 0) ? 0 : 80;
 
     for(int j = 0; j < ENTITIES_PER_LANE; j++) {
       int idx = s_total_entities;
-      s_platforms[idx].x = 24 + (i * 24); 
+      s_platforms[idx].x = 16 + (i * 16); 
       
-      // Space them out by 120 pixels vertically, add the stagger, and a tiny bit of random variance
-      s_platforms[idx].y_scaled = ((j * 120) + lane_stagger + (rand() % 15)) * 10; 
+      s_platforms[idx].y_scaled = ((j * (s_screen_h/ENTITIES_PER_LANE)) + lane_stagger + (rand() % 30)) * 10; 
       
       s_platforms[idx].speed_scaled = lane_speed; 
       s_platforms[idx].is_car = lane_is_car;
@@ -173,46 +194,50 @@ static void init_platforms() {
     }
   }
 }
+
 // --- DRAWING LOOP ---
 
 static void canvas_update_proc(Layer *layer, GContext *ctx) {
-  // 1. Draw Background
   graphics_context_set_fill_color(ctx, GColorBlack);
   graphics_fill_rect(ctx, layer_get_bounds(layer), 0, GCornerNone);
 
   #ifdef PBL_COLOR
     if (s_is_highway) {
       graphics_context_set_fill_color(ctx, GColorDarkGray); 
-      graphics_fill_rect(ctx, GRect(24, 0, s_screen_w - 48, s_screen_h), 0, GCornerNone);
+      graphics_fill_rect(ctx, GRect(16, 0, s_screen_w - 32, s_screen_h), 0, GCornerNone);
       graphics_context_set_fill_color(ctx, GColorMalachite); 
-      graphics_fill_rect(ctx, GRect(0, 0, 24, s_screen_h), 0, GCornerNone); 
-      graphics_fill_rect(ctx, GRect(s_screen_w - 24, 0, 24, s_screen_h), 0, GCornerNone); 
+      graphics_fill_rect(ctx, GRect(0, 0, 16, s_screen_h), 0, GCornerNone); 
+      graphics_fill_rect(ctx, GRect(s_screen_w - 16, 0, 16, s_screen_h), 0, GCornerNone); 
       graphics_context_set_stroke_color(ctx, GColorWhite);
       for (int i = 1; i < s_num_active_lanes; i++) {
         for (int y = 0; y < s_screen_h; y += 15) {
-          graphics_draw_line(ctx, GPoint(24 + (i*24), y), GPoint(24 + (i*24), y+5));
+          graphics_draw_line(ctx, GPoint(16 + (i*16), y), GPoint(16 + (i*16), y+5));
         }
       }
     } else {
       graphics_context_set_fill_color(ctx, GColorPictonBlue);
-      graphics_fill_rect(ctx, GRect(24, 0, s_screen_w - 48, s_screen_h), 0, GCornerNone);
+      graphics_fill_rect(ctx, GRect(16, 0, s_screen_w - 32, s_screen_h), 0, GCornerNone);
       graphics_context_set_fill_color(ctx, GColorPastelYellow);
-      graphics_fill_rect(ctx, GRect(0, 0, 24, s_screen_h), 0, GCornerNone); 
-      graphics_fill_rect(ctx, GRect(s_screen_w - 24, 0, 24, s_screen_h), 0, GCornerNone); 
+      graphics_fill_rect(ctx, GRect(0, 0, 16, s_screen_h), 0, GCornerNone); 
+      graphics_fill_rect(ctx, GRect(s_screen_w - 16, 0, 16, s_screen_h), 0, GCornerNone); 
     }
   #else
     graphics_context_set_stroke_color(ctx, GColorWhite);
-    graphics_draw_line(ctx, GPoint(24, 0), GPoint(24, s_screen_h));
-    graphics_draw_line(ctx, GPoint(s_screen_w - 24, 0), GPoint(s_screen_w - 24, s_screen_h));
+    graphics_draw_line(ctx, GPoint(16, 0), GPoint(16, s_screen_h));
+    graphics_draw_line(ctx, GPoint(s_screen_w - 16, 0), GPoint(s_screen_w - 16, s_screen_h));
   #endif
 
   graphics_context_set_compositing_mode(ctx, GCompOpSet);
 
   // 2. Draw Entities
-  // UPDATE: Now loops through s_total_entities instead of s_num_active_lanes
   for (int i = 0; i < s_total_entities; i++) {
     int actual_y = s_platforms[i].y_scaled / 10;
-    GRect bounds = GRect(s_platforms[i].x, actual_y, 24, 24);
+    
+    int plat_h = 16;
+    if (s_platforms[i].is_car) plat_h = 32;
+    else if (!s_platforms[i].is_lilypad) plat_h = 48; 
+    
+    GRect bounds = GRect(s_platforms[i].x, actual_y, 16, plat_h);
     
     #ifdef PBL_COLOR
       if (s_platforms[i].is_car) {
@@ -234,16 +259,14 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
     graphics_draw_bitmap_in_rect(ctx, bmp, bounds);
   }
 
-  // 3. Draw the Frog
+  // 3. Draw the Frog (With Black Contrast Box)
   int frog_actual_y = s_frog_y_scaled / 10;
-  GRect highlight_bounds = GRect(s_frog_x + 2, frog_actual_y + 2, 20, 20);
   
-  // Ditch the green/white logic. Black background behind a white sprite ALWAYS pops.
+  GRect highlight_bounds = GRect(s_frog_x, frog_actual_y, 16, 16);
   graphics_context_set_fill_color(ctx, GColorBlack);
-  graphics_fill_rect(ctx, highlight_bounds, 4, GCornersAll); 
+  graphics_fill_rect(ctx, highlight_bounds, 0, GCornerNone); 
 
-  GRect frog_bounds = GRect(s_frog_x, frog_actual_y, 24, 24);
-  graphics_draw_bitmap_in_rect(ctx, s_current_frog_bitmap, frog_bounds);
+  graphics_draw_bitmap_in_rect(ctx, s_current_frog_bitmap, highlight_bounds);
 
   // 4. Draw UI
   char ui_buffer[32];
@@ -285,15 +308,16 @@ static void check_collisions() {
 
   int frog_actual_y = s_frog_y_scaled / 10;
 
-  if (s_frog_x == 0 || s_frog_x >= s_screen_w - 24) return; 
+  if (s_frog_x == 0 || s_frog_x >= s_screen_w - 16) return; 
 
   if (s_is_highway) {
-    // UPDATE: Loop through all spawned entities
     for (int i = 0; i < s_total_entities; i++) {
       if (s_frog_x == s_platforms[i].x) {
         int plat_actual_y = s_platforms[i].y_scaled / 10;
+        int plat_h = s_platforms[i].is_car ? 32 : 16;
         
-        if (frog_actual_y + 16 > plat_actual_y && frog_actual_y < plat_actual_y + 24) {
+        int frog_center_y = frog_actual_y + 8;
+        if (frog_center_y >= plat_actual_y && frog_center_y <= plat_actual_y + plat_h) {
           kill_frog(); 
           return;
         }
@@ -301,12 +325,13 @@ static void check_collisions() {
     }
   } else {
     bool safe_on_platform = false;
-    // UPDATE: Loop through all spawned entities
     for (int i = 0; i < s_total_entities; i++) {
       if (s_frog_x == s_platforms[i].x) {
         int plat_actual_y = s_platforms[i].y_scaled / 10;
+        int plat_h = s_platforms[i].is_lilypad ? 16 : 48; 
         
-        if (frog_actual_y + 16 > plat_actual_y && frog_actual_y < plat_actual_y + 24) {
+        int frog_center_y = frog_actual_y + 8;
+        if (frog_center_y >= plat_actual_y && frog_center_y <= plat_actual_y + plat_h) {
           safe_on_platform = true;
           s_frog_y_scaled += s_platforms[i].speed_scaled; 
           break;
@@ -316,22 +341,25 @@ static void check_collisions() {
 
     if (!safe_on_platform) {
       kill_frog(); 
-    } else if (frog_actual_y > s_screen_h || frog_actual_y < -24) {
+    } else if (frog_actual_y > s_screen_h || frog_actual_y < -16) {
       kill_frog(); 
     }
   }
 }
 
 static void game_loop(void *data) {
-  // UPDATE: Loop through all spawned entities
   for (int i = 0; i < s_total_entities; i++) {
     s_platforms[i].y_scaled += s_platforms[i].speed_scaled;
     
     int actual_y = s_platforms[i].y_scaled / 10;
     
+    int plat_h = 16;
+    if (s_platforms[i].is_car) plat_h = 32;
+    else if (!s_platforms[i].is_lilypad) plat_h = 48;
+
     if (s_platforms[i].speed_scaled > 0 && actual_y > s_screen_h) {
-      s_platforms[i].y_scaled = -24 * 10; 
-    } else if (s_platforms[i].speed_scaled < 0 && actual_y < -24) {
+      s_platforms[i].y_scaled = -plat_h * 10; 
+    } else if (s_platforms[i].speed_scaled < 0 && actual_y < -plat_h) {
       s_platforms[i].y_scaled = s_screen_h * 10; 
     }
   }
@@ -346,15 +374,15 @@ static void game_loop(void *data) {
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
   if (s_is_dead || s_lives <= 0) return; 
   if ((s_frog_y_scaled / 10) > 16) { 
-    s_frog_y_scaled -= 24 * 10; 
+    s_frog_y_scaled -= 16 * 10; 
     layer_mark_dirty(s_canvas_layer);
   }
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
   if (s_is_dead || s_lives <= 0) return; 
-  if ((s_frog_y_scaled / 10) < s_screen_h - 24) { 
-    s_frog_y_scaled += 24 * 10;
+  if ((s_frog_y_scaled / 10) < s_screen_h - 16) { 
+    s_frog_y_scaled += 16 * 10;
     layer_mark_dirty(s_canvas_layer);
   }
 }
@@ -375,10 +403,10 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
 
   if (s_is_dead) return; 
   
-  if (s_frog_x < s_screen_w - 24) { 
-    s_frog_x += 24;
+  if (s_frog_x < s_screen_w - 16) { 
+    s_frog_x += 16;
     
-    if (s_frog_x >= s_screen_w - 24) {
+    if (s_frog_x >= s_screen_w - 16) {
       vibes_double_pulse(); 
       s_level++;
       s_lives++; 
@@ -412,20 +440,20 @@ static void main_window_load(Window *window) {
   layer_set_update_proc(s_canvas_layer, canvas_update_proc);
   layer_add_child(window_layer, s_canvas_layer);
 
-  s_frog_bitmap = gbitmap_create_blank(GSize(24, 24), GBitmapFormat1Bit);
+  s_frog_bitmap = gbitmap_create_blank(GSize(16, 16), GBitmapFormat1Bit);
   memcpy(gbitmap_get_data(s_frog_bitmap), frog_bitmap_data, sizeof(frog_bitmap_data));
 
-  s_splat_bitmap = gbitmap_create_blank(GSize(24, 24), GBitmapFormat1Bit);
+  s_splat_bitmap = gbitmap_create_blank(GSize(16, 16), GBitmapFormat1Bit);
   memcpy(gbitmap_get_data(s_splat_bitmap), splat_bitmap_data, sizeof(splat_bitmap_data));
 
-  s_log_bitmap = gbitmap_create_blank(GSize(24, 24), GBitmapFormat1Bit);
-  memcpy(gbitmap_get_data(s_log_bitmap), log_bitmap_data, sizeof(log_bitmap_data));
-  
-  s_lilypad_bitmap = gbitmap_create_blank(GSize(24, 24), GBitmapFormat1Bit);
+  s_lilypad_bitmap = gbitmap_create_blank(GSize(16, 16), GBitmapFormat1Bit);
   memcpy(gbitmap_get_data(s_lilypad_bitmap), lilypad_bitmap_data, sizeof(lilypad_bitmap_data));
   
-  s_car_bitmap = gbitmap_create_blank(GSize(24, 24), GBitmapFormat1Bit);
+  s_car_bitmap = gbitmap_create_blank(GSize(16, 32), GBitmapFormat1Bit);
   memcpy(gbitmap_get_data(s_car_bitmap), car_bitmap_data, sizeof(car_bitmap_data));
+
+  s_log_bitmap = gbitmap_create_blank(GSize(16, 48), GBitmapFormat1Bit);
+  memcpy(gbitmap_get_data(s_log_bitmap), log_bitmap_data, sizeof(log_bitmap_data));
 
   s_current_frog_bitmap = s_frog_bitmap;
   s_frog_y_scaled = (s_screen_h / 2) * 10;
