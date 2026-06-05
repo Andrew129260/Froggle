@@ -245,9 +245,12 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void click_config_provider(void *context) {
-  window_single_click_subscribe(BUTTON_ID_UP, up_click_handler);
-  window_single_click_subscribe(BUTTON_ID_DOWN, down_click_handler);
-  window_single_click_subscribe(BUTTON_ID_SELECT, select_click_handler);
+  // window_raw_click_subscribe arguments: (Button ID, Down Handler, Up Handler, Context)
+  // By placing your handlers in the "Down Handler" slot, movement happens instantly on press.
+  
+  window_raw_click_subscribe(BUTTON_ID_UP, up_click_handler, NULL, NULL);
+  window_raw_click_subscribe(BUTTON_ID_DOWN, down_click_handler, NULL, NULL);
+  window_raw_click_subscribe(BUTTON_ID_SELECT, select_click_handler, NULL, NULL);
 }
 
 // --- WINDOW MANAGEMENT ---
