@@ -1,0 +1,21 @@
+{
+    "author": "andrew129260@gmail.com",
+    "dependencies": {},
+    "keywords": [],
+    "name": "froggle",
+    "pebble": {
+        "displayName": "Froggle",
+        "enableMultiJS": true,
+        "messageKeys": [],
+        "projectType": "native",
+        "resources": {
+            "media": []
+        },
+        "sdkVersion": "3",
+        "uuid": "2bbe290e-f163-445c-b1f8-debc8ca0ab74",
+        "watchapp": {
+            "watchface": false
+        }
+    },
+    "version": "1.0.0"
+}
