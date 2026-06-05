@@ -85,6 +85,34 @@ static const uint8_t car_bitmap_data[] = {
   0b00000000, 0b00000000, 0b00000000, 0b00000000  
 };
 
+static const uint8_t log_bitmap_data[] = {
+  0b00000011, 0b11111111, 0b11000000, 0b00000000, // Row 1
+  0b00001111, 0b11111111, 0b11110000, 0b00000000, // Row 2
+  0b00011111, 0b11111111, 0b11111000, 0b00000000, // Row 3
+  0b00011001, 0b10111101, 0b10011000, 0b00000000, // Row 4
+  0b00011111, 0b11111111, 0b11111000, 0b00000000, // Row 5
+  0b00011011, 0b11011011, 0b11011000, 0b00000000, // Row 6
+  0b00011111, 0b11111111, 0b11111000, 0b00000000, // Row 7
+  0b00011001, 0b10111101, 0b10011000, 0b00000000, // Row 8
+  0b00011111, 0b11111111, 0b11111000, 0b00000000, // Row 9
+  0b00011011, 0b11011011, 0b11011000, 0b00000000, // Row 10
+  0b00011111, 0b11111111, 0b11111000, 0b00000000, // Row 11
+  0b00011001, 0b10111101, 0b10011000, 0b00000000, // Row 12
+  0b00011111, 0b11111111, 0b11111000, 0b00000000, // Row 13
+  0b00011011, 0b11011011, 0b11011000, 0b00000000, // Row 14
+  0b00011111, 0b11111111, 0b11111000, 0b00000000, // Row 15
+  0b00011001, 0b10111101, 0b10011000, 0b00000000, // Row 16
+  0b00011111, 0b11111111, 0b11111000, 0b00000000, // Row 17
+  0b00011011, 0b11011011, 0b11011000, 0b00000000, // Row 18
+  0b00011111, 0b11111111, 0b11111000, 0b00000000, // Row 19
+  0b00011001, 0b10111101, 0b10011000, 0b00000000, // Row 20
+  0b00011111, 0b11111111, 0b11111000, 0b00000000, // Row 21
+  0b00001111, 0b11111111, 0b11110000, 0b00000000, // Row 22
+  0b00000011, 0b11111111, 0b11000000, 0b00000000, // Row 23
+  0b00000000, 0b00000000, 0b00000000, 0b00000000  // Row 24
+};
+
+
 // --- GLOBAL VARIABLES ---
 
 static Window *s_main_window;
@@ -94,6 +122,12 @@ static GBitmap *s_frog_bitmap;
 static GBitmap *s_splat_bitmap;
 static GBitmap *s_car_bitmap;
 static GBitmap *s_current_frog_bitmap; // Tracks which state the frog is in
+
+static GBitmap *s_log_bitmap;
+
+// Add these with your other tracking locations
+static int s_log_x = 48;  // One lane to the left of the car
+static int s_log_y = -24; // Start just off the top of the screen
 
 static AppTimer *s_game_timer;
 
@@ -139,6 +173,18 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
   
   graphics_context_set_text_color(ctx, GColorWhite);
   graphics_draw_text(ctx, ui_buffer, fonts_get_system_font(FONT_KEY_GOTHIC_14), GRect(0, 0, 144, 20), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+  
+  // 4. Draw the Log
+  GRect log_bounds = GRect(s_log_x, s_log_y, 24, 24);
+  
+  #ifdef PBL_COLOR
+    // Paint a nice wood-brown square under the log
+    graphics_context_set_fill_color(ctx, GColorWindsorTan);
+    graphics_fill_rect(ctx, log_bounds, 0, GCornerNone);
+  #endif
+  
+  graphics_draw_bitmap_in_rect(ctx, s_log_bitmap, log_bounds);
+
 }
 
 // --- GAME LOGIC ---
@@ -174,6 +220,14 @@ static void game_loop(void *data) {
   // The car moves faster on higher levels!
   int car_speed = 3 + (s_level / 2);
   s_car_y -= car_speed; 
+  
+  // Make the log float down the stream
+  s_log_y += 2; 
+  
+  // If the log floats off the bottom, reset it to the top
+  if (s_log_y > 168) {
+    s_log_y = -24; 
+  }
   
   if (s_car_y < -24) {
     s_car_y = 168; 
@@ -270,7 +324,10 @@ static void main_window_load(Window *window) {
 
   s_car_bitmap = gbitmap_create_blank(GSize(24, 24), GBitmapFormat1Bit);
   memcpy(gbitmap_get_data(s_car_bitmap), car_bitmap_data, sizeof(car_bitmap_data));
-
+  
+  s_log_bitmap = gbitmap_create_blank(GSize(24, 24), GBitmapFormat1Bit);
+  memcpy(gbitmap_get_data(s_log_bitmap), log_bitmap_data, sizeof(log_bitmap_data));
+  
   // Set the starting graphic
   s_current_frog_bitmap = s_frog_bitmap;
 }
@@ -279,6 +336,7 @@ static void main_window_unload(Window *window) {
   gbitmap_destroy(s_frog_bitmap);
   gbitmap_destroy(s_splat_bitmap);
   gbitmap_destroy(s_car_bitmap);
+  gbitmap_destroy(s_log_bitmap);
   layer_destroy(s_canvas_layer);
 }
 
