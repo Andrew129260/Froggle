@@ -138,8 +138,8 @@ static int s_screen_h = 168;
 static int s_right_shore_x = 128; 
 static int s_num_active_lanes = 0;
 static int s_total_entities = 0;
-static bool s_is_highway = false; 
 
+static int s_level_type = 0; 
 static Entity s_platforms[MAX_ENTITIES];
 
 static int s_frog_x = 0;
@@ -147,8 +147,11 @@ static int s_frog_y_scaled = 72 * 10;
 static int s_lives = 3;
 static int s_level = 1;
 static bool s_is_dead = false;
-
 static bool s_is_paused = false;
+
+// --- FORWARD DECLARATIONS ---
+static void game_loop(void *data);
+static void select_click_handler(ClickRecognizerRef recognizer, void *context);
 
 // --- INIT LEVEL ---
 
@@ -157,16 +160,25 @@ static void init_platforms() {
   int max_lanes = total_cols - 2;
   s_num_active_lanes = max_lanes > 12 ? 12 : max_lanes; 
   
-  s_is_highway = (s_level % 2 == 0); 
+  // Cycle: 0 = Water, 1 = Highway, 2 = Mixed Split-Screen
+  s_level_type = (s_level - 1) % 3; 
   s_total_entities = 0;
 
+  int mid_lane = s_num_active_lanes / 2;
+
   for(int i = 0; i < s_num_active_lanes; i++) {
+    bool lane_is_highway = false;
+    if (s_level_type == 1) {
+      lane_is_highway = true;
+    } else if (s_level_type == 2 && i >= mid_lane) {
+      lane_is_highway = true;
+    }
+
     int lane_speed;
-    bool lane_is_car = s_is_highway;
+    bool lane_is_car = lane_is_highway;
     bool lane_is_lilypad = false;
     
-    if (s_is_highway) {
-      // SLOWED DOWN: Base speed and variance dropped to give smaller screens a chance
+    if (lane_is_highway) {
       lane_speed = 12 + (s_level * 2) + (rand() % 10); 
     } else {
       lane_is_lilypad = (i % 2 != 0); 
@@ -178,8 +190,7 @@ static void init_platforms() {
     int lane_stagger = (i % 2 == 0) ? 0 : 80;
 
     int entities_in_this_lane = ENTITIES_PER_LANE;
-    if (s_is_highway && s_screen_h <= 168) {
-      // STRICT TRAFFIC THINNING: Restrict to exactly 1 car per lane on classic screens
+    if (lane_is_highway && s_screen_h <= 168) {
       entities_in_this_lane = 1;
     }
 
@@ -208,10 +219,17 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
   graphics_fill_rect(ctx, layer_get_bounds(layer), 0, GCornerNone);
 
   #ifdef PBL_COLOR
-    if (s_is_highway) {
+    if (s_level_type == 0) {
+      // Full Water
+      graphics_context_set_fill_color(ctx, GColorPictonBlue);
+      graphics_fill_rect(ctx, GRect(16, 0, s_right_shore_x - 16, s_screen_h), 0, GCornerNone);
+      graphics_context_set_fill_color(ctx, GColorPastelYellow);
+      graphics_fill_rect(ctx, GRect(0, 0, 16, s_screen_h), 0, GCornerNone); 
+      graphics_fill_rect(ctx, GRect(s_right_shore_x, 0, s_screen_w - s_right_shore_x, s_screen_h), 0, GCornerNone); 
+    } else if (s_level_type == 1) {
+      // Full Highway
       graphics_context_set_fill_color(ctx, GColorDarkGray); 
       graphics_fill_rect(ctx, GRect(16, 0, s_right_shore_x - 16, s_screen_h), 0, GCornerNone);
-      
       graphics_context_set_fill_color(ctx, GColorMalachite); 
       graphics_fill_rect(ctx, GRect(0, 0, 16, s_screen_h), 0, GCornerNone); 
       graphics_fill_rect(ctx, GRect(s_right_shore_x, 0, s_screen_w - s_right_shore_x, s_screen_h), 0, GCornerNone); 
@@ -221,17 +239,35 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
          graphics_draw_line(ctx, GPoint(16 + (i*16), 0), GPoint(16 + (i*16), s_screen_h));
       }
     } else {
-      graphics_context_set_fill_color(ctx, GColorPictonBlue);
-      graphics_fill_rect(ctx, GRect(16, 0, s_right_shore_x - 16, s_screen_h), 0, GCornerNone);
+      // Mixed Level
+      int mid_x = 16 + ((s_num_active_lanes / 2) * 16);
       
+      // Water Half
+      graphics_context_set_fill_color(ctx, GColorPictonBlue);
+      graphics_fill_rect(ctx, GRect(16, 0, mid_x - 16, s_screen_h), 0, GCornerNone);
       graphics_context_set_fill_color(ctx, GColorPastelYellow);
       graphics_fill_rect(ctx, GRect(0, 0, 16, s_screen_h), 0, GCornerNone); 
+      
+      // Highway Half
+      graphics_context_set_fill_color(ctx, GColorDarkGray); 
+      graphics_fill_rect(ctx, GRect(mid_x, 0, s_right_shore_x - mid_x, s_screen_h), 0, GCornerNone);
+      graphics_context_set_fill_color(ctx, GColorMalachite); 
       graphics_fill_rect(ctx, GRect(s_right_shore_x, 0, s_screen_w - s_right_shore_x, s_screen_h), 0, GCornerNone); 
+      
+      graphics_context_set_stroke_color(ctx, GColorWhite);
+      for (int i = (s_num_active_lanes / 2) + 1; i < s_num_active_lanes; i++) {
+         graphics_draw_line(ctx, GPoint(16 + (i*16), 0), GPoint(16 + (i*16), s_screen_h));
+      }
     }
   #else
     graphics_context_set_stroke_color(ctx, GColorWhite);
     graphics_draw_line(ctx, GPoint(16, 0), GPoint(16, s_screen_h));
     graphics_draw_line(ctx, GPoint(s_right_shore_x, 0), GPoint(s_right_shore_x, s_screen_h));
+    
+    if (s_level_type == 2) {
+      int mid_x = 16 + ((s_num_active_lanes / 2) * 16);
+      graphics_draw_line(ctx, GPoint(mid_x, 0), GPoint(mid_x, s_screen_h));
+    }
   #endif
 
   graphics_context_set_compositing_mode(ctx, GCompOpSet);
@@ -310,8 +346,6 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
 
 // --- GAME LOGIC ---
 
-static void game_loop(void *data); 
-
 static void reset_splat_callback(void *data) {
   if (s_lives > 0) {
     s_is_dead = false;
@@ -343,7 +377,16 @@ static void check_collisions() {
 
   if (s_frog_x == 0 || s_frog_x >= s_right_shore_x) return; 
 
-  if (s_is_highway) {
+  int mid_x = 16 + ((s_num_active_lanes / 2) * 16);
+  bool in_highway_zone = false;
+
+  if (s_level_type == 1) {
+    in_highway_zone = true;
+  } else if (s_level_type == 2 && s_frog_x >= mid_x) {
+    in_highway_zone = true;
+  }
+
+  if (in_highway_zone) {
     for (int i = 0; i < s_total_entities; i++) {
       if (s_frog_x == s_platforms[i].x) {
         int plat_actual_y = s_platforms[i].y_scaled / 10;
@@ -475,14 +518,19 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   }
 }
 
-static void accel_tap_handler(AccelAxisType axis, int32_t direction) {
-  select_click_handler(NULL, NULL);
+// 2026 Touch API Support (Wrapped safely for older pebbles)
+#if defined(PBL_TOUCH)
+static void touch_handler(const TouchEvent *event, void *context) {
+  if (event->type == TouchEvent_Touchdown) {
+    select_click_handler(NULL, NULL);
+  }
 }
+#endif
 
 static void click_config_provider(void *context) {
-  window_raw_click_subscribe(BUTTON_ID_UP, up_click_handler, NULL, NULL);
-  window_raw_click_subscribe(BUTTON_ID_DOWN, down_click_handler, NULL, NULL);
-  window_raw_click_subscribe(BUTTON_ID_SELECT, select_click_handler, NULL, NULL);
+  window_single_click_subscribe(BUTTON_ID_UP, up_click_handler);
+  window_single_click_subscribe(BUTTON_ID_DOWN, down_click_handler);
+  window_single_click_subscribe(BUTTON_ID_SELECT, select_click_handler);
 }
 
 // --- WINDOW MANAGEMENT ---
@@ -548,7 +596,12 @@ static void init() {
 
   window_set_click_config_provider(s_main_window, click_config_provider);
   
-  accel_tap_service_subscribe(accel_tap_handler);
+  #if defined(PBL_TOUCH)
+  if (touch_service_is_enabled()) {
+    touch_service_subscribe(touch_handler, NULL);
+  }
+  #endif
+
   app_focus_service_subscribe(app_focus_handler);
 
   s_game_timer = app_timer_register(50, game_loop, NULL);
@@ -556,9 +609,11 @@ static void init() {
 }
 
 static void deinit() {
-  accel_tap_service_unsubscribe();
+  #if defined(PBL_TOUCH)
+  touch_service_unsubscribe();
+  #endif
+
   app_focus_service_unsubscribe();
-  
   window_destroy(s_main_window);
 }
 
