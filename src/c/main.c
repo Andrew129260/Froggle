@@ -148,6 +148,8 @@ static int s_lives = 3;
 static int s_level = 1;
 static bool s_is_dead = false;
 
+static bool s_is_paused = false;
+
 // --- INIT LEVEL ---
 
 static void init_platforms() {
@@ -164,7 +166,8 @@ static void init_platforms() {
     bool lane_is_lilypad = false;
     
     if (s_is_highway) {
-      lane_speed = 15 + (s_level * 3) + (rand() % 15); 
+      // SLOWED DOWN: Base speed and variance dropped to give smaller screens a chance
+      lane_speed = 12 + (s_level * 2) + (rand() % 10); 
     } else {
       lane_is_lilypad = (i % 2 != 0); 
       lane_speed = 9 + (s_level * 2) + (rand() % 10); 
@@ -174,7 +177,13 @@ static void init_platforms() {
 
     int lane_stagger = (i % 2 == 0) ? 0 : 80;
 
-    for(int j = 0; j < ENTITIES_PER_LANE; j++) {
+    int entities_in_this_lane = ENTITIES_PER_LANE;
+    if (s_is_highway && s_screen_h <= 168) {
+      // STRICT TRAFFIC THINNING: Restrict to exactly 1 car per lane on classic screens
+      entities_in_this_lane = 1;
+    }
+
+    for(int j = 0; j < entities_in_this_lane; j++) {
       int idx = s_total_entities;
       s_platforms[idx].x = 16 + (i * 16); 
       s_platforms[idx].y_scaled = ((j * (s_screen_h/ENTITIES_PER_LANE)) + lane_stagger + (rand() % 30)) * 10; 
@@ -227,7 +236,6 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
 
   graphics_context_set_compositing_mode(ctx, GCompOpSet);
 
-  // 2. Draw Entities
   for (int i = 0; i < s_total_entities; i++) {
     int actual_y = s_platforms[i].y_scaled / 10;
     
@@ -258,7 +266,6 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
     graphics_draw_bitmap_in_rect(ctx, bmp, bounds);
   }
 
-  // 3. Draw the Frog
   int frog_actual_y = s_frog_y_scaled / 10;
   
   GRect highlight_bounds = GRect(s_frog_x, frog_actual_y, 16, 16);
@@ -267,26 +274,43 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
 
   graphics_draw_bitmap_in_rect(ctx, s_current_frog_bitmap, highlight_bounds);
 
-  // 4. Draw UI
   char ui_buffer[32];
   if (s_lives > 0) {
     snprintf(ui_buffer, sizeof(ui_buffer), "Level %d | Lives: %d", s_level, s_lives);
   } else {
-    snprintf(ui_buffer, sizeof(ui_buffer), "GAME OVER");
+    snprintf(ui_buffer, sizeof(ui_buffer), "Lives: 0"); 
   }
   
-  // PBL_IF_ROUND_ELSE pushes UI down exactly 12px for Chalk/Gabbro displays!
   int ui_y = PBL_IF_ROUND_ELSE(12, 0);
   
   graphics_context_set_text_color(ctx, GColorWhite);
   graphics_context_set_fill_color(ctx, GColorBlack);
   graphics_fill_rect(ctx, GRect(0, ui_y, s_screen_w, 16), 0, GCornerNone);
   graphics_draw_text(ctx, ui_buffer, fonts_get_system_font(FONT_KEY_GOTHIC_14), GRect(0, ui_y - 2, s_screen_w, 20), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+
+  if (s_is_dead && s_lives <= 0) {
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_fill_rect(ctx, GRect(s_screen_w/2 - 60, s_screen_h/2 - 20, 120, 40), 4, GCornersAll);
+    
+    #ifdef PBL_COLOR
+      graphics_context_set_text_color(ctx, GColorRed);
+    #else
+      graphics_context_set_text_color(ctx, GColorWhite);
+    #endif
+    
+    graphics_draw_text(ctx, "GAME OVER", fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(s_screen_w/2 - 60, s_screen_h/2 - 16, 120, 30), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+  
+  } else if (s_is_paused) {
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_fill_rect(ctx, GRect(s_screen_w/2 - 50, s_screen_h/2 - 20, 100, 40), 4, GCornersAll);
+    graphics_context_set_text_color(ctx, GColorWhite);
+    graphics_draw_text(ctx, "PAUSED", fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(s_screen_w/2 - 50, s_screen_h/2 - 16, 100, 30), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+  }
 }
 
 // --- GAME LOGIC ---
 
-static void game_loop(void *data); // Forward declaration for callbacks
+static void game_loop(void *data); 
 
 static void reset_splat_callback(void *data) {
   if (s_lives > 0) {
@@ -296,8 +320,9 @@ static void reset_splat_callback(void *data) {
     s_frog_y_scaled = (s_screen_h / 2) * 10; 
     layer_mark_dirty(s_canvas_layer);
     
-    // BATTERY FIX: Kickstart the engine again
-    s_game_timer = app_timer_register(50, game_loop, NULL);
+    if (!s_is_paused) {
+      s_game_timer = app_timer_register(50, game_loop, NULL);
+    }
   }
 }
 
@@ -307,6 +332,7 @@ static void kill_frog() {
   s_is_dead = true;
   s_lives--;
   s_current_frog_bitmap = s_splat_bitmap; 
+  layer_mark_dirty(s_canvas_layer); 
   app_timer_register(800, reset_splat_callback, NULL);
 }
 
@@ -355,6 +381,8 @@ static void check_collisions() {
 }
 
 static void game_loop(void *data) {
+  if (s_is_paused || s_is_dead) return; 
+
   for (int i = 0; i < s_total_entities; i++) {
     s_platforms[i].y_scaled += s_platforms[i].speed_scaled;
     
@@ -373,16 +401,22 @@ static void game_loop(void *data) {
   check_collisions();
   layer_mark_dirty(s_canvas_layer);
   
-  // BATTERY FIX: Only schedule the next frame if the frog is alive
-  if (!s_is_dead) {
-    s_game_timer = app_timer_register(50, game_loop, NULL); 
+  s_game_timer = app_timer_register(50, game_loop, NULL); 
+}
+
+// --- APP FOCUS & NOTIFICATIONS ---
+
+static void app_focus_handler(bool in_focus) {
+  if (!in_focus && !s_is_dead && !s_is_paused) {
+    s_is_paused = true;
+    layer_mark_dirty(s_canvas_layer); 
   }
 }
 
-// --- BUTTON INPUTS ---
+// --- BUTTON & TAP INPUTS ---
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
-  if (s_is_dead || s_lives <= 0) return; 
+  if (s_is_dead || s_lives <= 0 || s_is_paused) return; 
   if ((s_frog_y_scaled / 10) > 16) { 
     s_frog_y_scaled -= 16 * 10; 
     layer_mark_dirty(s_canvas_layer);
@@ -390,7 +424,7 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  if (s_is_dead || s_lives <= 0) return; 
+  if (s_is_dead || s_lives <= 0 || s_is_paused) return; 
   if ((s_frog_y_scaled / 10) < s_screen_h - 16) { 
     s_frog_y_scaled += 16 * 10;
     layer_mark_dirty(s_canvas_layer);
@@ -403,18 +437,25 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
     s_level = 1;
     persist_write_int(SAVE_KEY_LEVEL, s_level); 
     s_is_dead = false;
+    s_is_paused = false;
     s_current_frog_bitmap = s_frog_bitmap;
     s_frog_x = 0;
     s_frog_y_scaled = (s_screen_h / 2) * 10;
     init_platforms();
     layer_mark_dirty(s_canvas_layer);
     
-    // BATTERY FIX: Kickstart engine for new game
     s_game_timer = app_timer_register(50, game_loop, NULL);
     return;
   }
 
   if (s_is_dead) return; 
+
+  if (s_is_paused) {
+    s_is_paused = false;
+    s_game_timer = app_timer_register(50, game_loop, NULL);
+    layer_mark_dirty(s_canvas_layer);
+    return; 
+  }
   
   if (s_frog_x < s_right_shore_x) { 
     s_frog_x += 16;
@@ -432,6 +473,10 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
     }
     layer_mark_dirty(s_canvas_layer);
   }
+}
+
+static void accel_tap_handler(AccelAxisType axis, int32_t direction) {
+  select_click_handler(NULL, NULL);
 }
 
 static void click_config_provider(void *context) {
@@ -503,12 +548,17 @@ static void init() {
 
   window_set_click_config_provider(s_main_window, click_config_provider);
   
-  // Kickstart the very first game loop
+  accel_tap_service_subscribe(accel_tap_handler);
+  app_focus_service_subscribe(app_focus_handler);
+
   s_game_timer = app_timer_register(50, game_loop, NULL);
   window_stack_push(s_main_window, true);
 }
 
 static void deinit() {
+  accel_tap_service_unsubscribe();
+  app_focus_service_unsubscribe();
+  
   window_destroy(s_main_window);
 }
 
