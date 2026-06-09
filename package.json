@@ -9,7 +9,20 @@
         "messageKeys": [],
         "projectType": "native",
         "resources": {
-            "media": []
+            "media": [
+                {
+                    "file": "images/frogglecolor.png",
+                    "name": "SPRITESColor",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/frogglebw.png",
+                    "name": "SPRITES",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                }
+            ]
         },
         "sdkVersion": "3",
         "targetPlatforms": [
@@ -26,5 +39,5 @@
             "watchface": false
         }
     },
-    "version": "2.1.1"
+    "version": "3.0.1"
 }
